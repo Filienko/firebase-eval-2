@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Conversation Browser</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.8.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.8.0/firebase-firestore-compat.min.js"></script>
+    <style>
+      :root {
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
+        --background: #f8fafc;
+        --border: #e2e8f0;
+        --sidebar-width: 250px;
+        --error: #ef4444;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        line-height: 1.5;
+        background: var(--background);
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .layout {
+        display: flex;
+        height: 100vh;
+      }
+
+      .sidebar {
+        width: var(--sidebar-width);
+        background: white;
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+
+      .main-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+      }
+
+      .firebase-config {
+        padding: 15px;
+        background: #f1f5f9;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .config-input {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 10px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+      }
+
+      .user-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+      }
+
+      .user-item {
+        padding: 10px;
+        margin-bottom: 5px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.2s;
+        word-break: break-all;
+      }
+
+      .user-item:hover {
+        background: var(--background);
+      }
+
+      .user-item.active {
+        background: var(--primary);
+        color: white;
+      }
+
+      .conversation-list {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .conversation-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      .conversation-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        color: #64748b;
+        font-size: 0.875rem;
+      }
+
+      .conversation-content {
+        white-space: pre-wrap;
+      }
+
+      .message {
+        border-left: 3px solid var(--primary);
+        padding: 10px;
+        margin: 10px 0;
+        background: var(--background);
+      }
+
+      .btn {
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: white;
+        color: #1e293b;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+        width: 100%;
+      }
+
+      .btn:hover:not(:disabled) {
+        background: var(--background);
+      }
+
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .btn-primary {
+        background: var(--primary);
+        color: white;
+        border: none;
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        background: var(--primary-hover);
+      }
+
+      .status-message {
+        text-align: center;
+        padding: 20px;
+        color: #64748b;
+      }
+
+      .error-message {
+        color: var(--error);
+        padding: 10px;
+        margin: 10px 0;
+        background: #fee2e2;
+        border-radius: 4px;
+      }
+
+      .connection-status {
+        padding: 5px 10px;
+        font-size: 12px;
+        text-align: center;
+        background: #dbeafe;
+        color: var(--primary);
+      }
+
+      .connection-status.connected {
+        background: #dcfce7;
+        color: #16a34a;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="firebase-config">
+          <h3 style="margin-bottom: 10px">Firebase Configuration</h3>
+          <input
+            type="text"
+            id="apiKey"
+            class="config-input"
+            placeholder="API Key"
+          />
+          <input
+            type="text"
+            id="projectId"
+            class="config-input"
+            placeholder="Project ID"
+          />
+          <button
+            id="connectBtn"
+            onclick="initializeFirebase()"
+            class="btn btn-primary"
+          >
+            Connect
+          </button>
+          <div id="connectionStatus" class="connection-status">
+            Not Connected
+          </div>
+        </div>
+
+        <div class="add-user-form">
+          <input
+            type="text"
+            id="newUserId"
+            class="config-input"
+            placeholder="Add User ID"
+          />
+          <button id="addUserBtn" onclick="addUser()" class="btn" disabled>
+            Add User
+          </button>
+        </div>
+
+        <div class="user-list" id="userList">
+          <!-- User list will be populated here -->
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <div class="conversation-list" id="conversationList">
+          <div class="status-message">
+            Connect to Firebase to view conversations
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      let db = null;
+      let currentUserId = null;
+      let userIds = new Set();
+      let isConnected = false;
+
+      function updateConnectionStatus(connected, message) {
+        const statusEl = document.getElementById("connectionStatus");
+        const addUserBtn = document.getElementById("addUserBtn");
+
+        isConnected = connected;
+        statusEl.textContent = message;
+        statusEl.className = `connection-status ${
+          connected ? "connected" : ""
+        }`;
+        addUserBtn.disabled = !connected;
+      }
+
+      async function initializeFirebase() {
+        const apiKey = document.getElementById("apiKey").value;
+        const projectId = document.getElementById("projectId").value;
+
+        if (!apiKey || !projectId) {
+          alert("Please fill in all Firebase configuration fields");
+          return;
+        }
+
+        try {
+          const firebaseConfig = {
+            apiKey: apiKey,
+            projectId: projectId,
+            authDomain: `${projectId}.firebaseapp.com`,
+          };
+
+          // Initialize Firebase
+          firebase.initializeApp(firebaseConfig);
+          db = firebase.firestore();
+
+          // Test connection by trying to get a document
+          await db.collection("chatSessions").limit(1).get();
+
+          updateConnectionStatus(true, "Connected");
+          document.getElementById("connectBtn").disabled = true;
+
+          // If we have any users in the list, load the first one
+          if (userIds.size > 0) {
+            selectUser(Array.from(userIds)[0]);
+          }
+        } catch (error) {
+          console.error("Firebase initialization error:", error);
+          updateConnectionStatus(false, "Connection Failed");
+          alert(`Failed to connect: ${error.message}`);
+        }
+      }
+
+      function addUser() {
+        const newUserId = document.getElementById("newUserId").value.trim();
+        if (newUserId && !userIds.has(newUserId)) {
+          userIds.add(newUserId);
+          updateUserList();
+          document.getElementById("newUserId").value = "";
+
+          // If this is the first user, select them automatically
+          if (userIds.size === 1) {
+            selectUser(newUserId);
+          }
+        }
+      }
+
+      function updateUserList() {
+        const userList = document.getElementById("userList");
+        userList.innerHTML = "";
+
+        userIds.forEach((userId) => {
+          const userItem = document.createElement("div");
+          userItem.className = `user-item ${
+            userId === currentUserId ? "active" : ""
+          }`;
+          userItem.textContent = userId;
+          userItem.onclick = () => selectUser(userId);
+          userList.appendChild(userItem);
+        });
+      }
+
+      function selectUser(userId) {
+        if (!isConnected) {
+          alert("Please connect to Firebase first");
+          return;
+        }
+
+        currentUserId = userId;
+        updateUserList();
+        loadConversations(userId);
+      }
+
+      async function loadConversations(userId) {
+        const conversationList = document.getElementById("conversationList");
+        conversationList.innerHTML =
+          '<div class="status-message">Loading conversations...</div>';
+
+        try {
+          // First try without ordering to check if user exists
+          const snapshot = await db
+            .collection("chatSessions")
+            .where("userID", "==", userId)
+            .get();
+
+          if (snapshot.empty) {
+            conversationList.innerHTML =
+              '<div class="status-message">No conversations found for this user.</div>';
+            return;
+          }
+
+          // If user exists, get ordered results
+          const orderedSnapshot = await db
+            .collection("chatSessions")
+            .where("userID", "==", userId)
+            .orderBy("createdAt", "asc")
+            .get();
+
+          conversationList.innerHTML = "";
+          orderedSnapshot.forEach((doc) => {
+            const data = doc.data();
+            const card = document.createElement("div");
+            card.className = "conversation-card";
+
+            const timestamp = data.createdAt?.toDate
+              ? data.createdAt.toDate()
+              : data.createdAt
+              ? new Date(data.createdAt)
+              : "No timestamp";
+            const timeString =
+              timestamp !== "No timestamp"
+                ? timestamp.toLocaleString()
+                : timestamp;
+
+            let messageContent = "No messages available";
+            if (data.message) {
+              messageContent =
+                typeof data.message === "string"
+                  ? data.message
+                  : JSON.stringify(data.message, null, 2);
+            }
+
+            card.innerHTML = `
+              <div class="conversation-header">
+                <div class="timestamp">Created: ${timeString}</div>
+                <div>ID: ${doc.id}</div>
+              </div>
+              <div class="conversation-content">
+                <div class="message">${messageContent}</div>
+              </div>
+            `;
+
+            conversationList.appendChild(card);
+          });
+        } catch (error) {
+          console.error("Error loading conversations:", error);
+          if (error.message.includes("requires an index")) {
+            conversationList.innerHTML = `
+              <div class="error-message">
+                This query requires a Firebase index. Please click the link below to create it:<br><br>
+                <a href="${
+                  error.message.split("here: ")[1]
+                }" target="_blank">Create Index</a>
+              </div>
+            `;
+          } else {
+            conversationList.innerHTML = `
+              <div class="error-message">
+                Error loading conversations: ${error.message}
+              </div>
+            `;
+          }
+        }
+      }
+
+      // Initialize with sample user IDs
+      userIds.add("123ekj123k1jhn3");
+      userIds.add("dasekjh23k1jhn3");
+      updateUserList();
+    </script>
+  </body>
+</html>
