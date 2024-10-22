@@ -94,12 +94,34 @@
         margin: 0 auto;
       }
 
-      .conversation-card {
+      .session-group {
         background: white;
         border-radius: 8px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+      }
+
+      .session-header {
+        background: var(--primary);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px 8px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .session-content {
         padding: 20px;
-        margin-bottom: 20px;
+      }
+
+      .conversation-card {
+        border-bottom: 1px solid var(--border);
+        padding: 15px 0;
+      }
+
+      .conversation-card:last-child {
+        border-bottom: none;
       }
 
       .conversation-header {
@@ -177,6 +199,13 @@
       .connection-status.connected {
         background: #dcfce7;
         color: #16a34a;
+      }
+
+      .message-count {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.875rem;
       }
     </style>
   </head>
@@ -330,6 +359,12 @@
         loadConversations(userId);
       }
 
+      function formatTimestamp(timestamp) {
+        if (!timestamp) return "No timestamp";
+        if (timestamp.toDate) return timestamp.toDate().toLocaleString();
+        return new Date(timestamp).toLocaleString();
+      }
+
       async function loadConversations(userId) {
         const conversationList = document.getElementById("conversationList");
         conversationList.innerHTML =
@@ -355,42 +390,75 @@
             .orderBy("createdAt", "asc")
             .get();
 
-          conversationList.innerHTML = "";
+          // Group conversations by sessionID
+          const sessions = {};
           orderedSnapshot.forEach((doc) => {
             const data = doc.data();
-            const card = document.createElement("div");
-            card.className = "conversation-card";
-
-            const timestamp = data.createdAt?.toDate
-              ? data.createdAt.toDate()
-              : data.createdAt
-              ? new Date(data.createdAt)
-              : "No timestamp";
-            const timeString =
-              timestamp !== "No timestamp"
-                ? timestamp.toLocaleString()
-                : timestamp;
-
-            let messageContent = "No messages available";
-            if (data.message) {
-              messageContent =
-                typeof data.message === "string"
-                  ? data.message
-                  : JSON.stringify(data.message, null, 2);
+            if (!data.sessionID) return;
+            
+            if (!sessions[data.sessionID]) {
+              sessions[data.sessionID] = {
+                messages: [],
+                firstTimestamp: data.createdAt,
+              };
             }
+            
+            sessions[data.sessionID].messages.push({
+              id: doc.id,
+              ...data,
+            });
+          });
 
-            card.innerHTML = `
-              <div class="conversation-header">
-                <div class="timestamp">Created: ${timeString}</div>
-                <div>ID: ${doc.id}</div>
+          // Sort sessions by first message timestamp
+          const sortedSessions = Object.entries(sessions).sort(([, a], [, b]) => {
+            const timeA = a.firstTimestamp?.toDate?.() || new Date(a.firstTimestamp);
+            const timeB = b.firstTimestamp?.toDate?.() || new Date(b.firstTimestamp);
+            return timeA - timeB;
+          });
+
+          conversationList.innerHTML = "";
+          
+          sortedSessions.forEach(([sessionId, session]) => {
+            const sessionGroup = document.createElement("div");
+            sessionGroup.className = "session-group";
+
+            const firstMessage = session.messages[0];
+            const timestamp = formatTimestamp(firstMessage.createdAt);
+
+            sessionGroup.innerHTML = `
+              <div class="session-header">
+                <div>Session: ${sessionId}</div>
+                <div class="message-count">${session.messages.length} messages</div>
               </div>
-              <div class="conversation-content">
-                <div class="message">${messageContent}</div>
+              <div class="session-content">
+                ${session.messages
+                  .map((msg) => {
+                    const messageContent =
+                      typeof msg.message === "string"
+                        ? msg.message
+                        : JSON.stringify(msg.message, null, 2);
+
+                    return `
+                      <div class="conversation-card">
+                        <div class="conversation-header">
+                          <div class="timestamp">Created: ${formatTimestamp(
+                            msg.createdAt
+                          )}</div>
+                          <div>ID: ${msg.id}</div>
+                        </div>
+                        <div class="conversation-content">
+                          <div class="message">${messageContent || "No message content"}</div>
+                        </div>
+                      </div>
+                    `;
+                  })
+                  .join("")}
               </div>
             `;
 
-            conversationList.appendChild(card);
+            conversationList.appendChild(sessionGroup);
           });
+
         } catch (error) {
           console.error("Error loading conversations:", error);
           if (error.message.includes("requires an index")) {
