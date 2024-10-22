@@ -395,14 +395,14 @@
           orderedSnapshot.forEach((doc) => {
             const data = doc.data();
             if (!data.sessionID) return;
-            
+
             if (!sessions[data.sessionID]) {
               sessions[data.sessionID] = {
                 messages: [],
                 firstTimestamp: data.createdAt,
               };
             }
-            
+
             sessions[data.sessionID].messages.push({
               id: doc.id,
               ...data,
@@ -410,14 +410,18 @@
           });
 
           // Sort sessions by first message timestamp
-          const sortedSessions = Object.entries(sessions).sort(([, a], [, b]) => {
-            const timeA = a.firstTimestamp?.toDate?.() || new Date(a.firstTimestamp);
-            const timeB = b.firstTimestamp?.toDate?.() || new Date(b.firstTimestamp);
-            return timeA - timeB;
-          });
+          const sortedSessions = Object.entries(sessions).sort(
+            ([, a], [, b]) => {
+              const timeA =
+                a.firstTimestamp?.toDate?.() || new Date(a.firstTimestamp);
+              const timeB =
+                b.firstTimestamp?.toDate?.() || new Date(b.firstTimestamp);
+              return timeA - timeB;
+            }
+          );
 
           conversationList.innerHTML = "";
-          
+
           sortedSessions.forEach(([sessionId, session]) => {
             const sessionGroup = document.createElement("div");
             sessionGroup.className = "session-group";
@@ -428,7 +432,9 @@
             sessionGroup.innerHTML = `
               <div class="session-header">
                 <div>Session: ${sessionId}</div>
-                <div class="message-count">${session.messages.length} messages</div>
+                <div class="message-count">${
+                  session.messages.length
+                } messages</div>
               </div>
               <div class="session-content">
                 ${session.messages
@@ -447,7 +453,9 @@
                           <div>ID: ${msg.id}</div>
                         </div>
                         <div class="conversation-content">
-                          <div class="message">${messageContent || "No message content"}</div>
+                          <div class="message">${
+                            messageContent || "No message content"
+                          }</div>
                         </div>
                       </div>
                     `;
@@ -458,7 +466,6 @@
 
             conversationList.appendChild(sessionGroup);
           });
-
         } catch (error) {
           console.error("Error loading conversations:", error);
           if (error.message.includes("requires an index")) {
