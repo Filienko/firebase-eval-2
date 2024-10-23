@@ -12,7 +12,7 @@
         --primary-hover: #1d4ed8;
         --background: #f8fafc;
         --border: #e2e8f0;
-        --sidebar-width: 250px;
+        --sidebar-width: 300px;
         --error: #ef4444;
       }
 
@@ -80,6 +80,12 @@
         word-break: break-all;
       }
 
+      .user-id {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 4px;
+      }
+
       .user-item:hover {
         background: var(--background);
       }
@@ -87,6 +93,10 @@
       .user-item.active {
         background: var(--primary);
         color: white;
+      }
+
+      .user-item.active .user-id {
+        color: rgba(255, 255, 255, 0.7);
       }
 
       .conversation-list {
@@ -207,6 +217,11 @@
         border-radius: 12px;
         font-size: 0.875rem;
       }
+
+      .add-user-form {
+        padding: 15px;
+        border-bottom: 1px solid var(--border);
+      }
     </style>
   </head>
   <body>
@@ -241,9 +256,15 @@
         <div class="add-user-form">
           <input
             type="text"
+            id="newUserEmail"
+            class="config-input"
+            placeholder="Email (optional)"
+          />
+          <input
+            type="text"
             id="newUserId"
             class="config-input"
-            placeholder="Add User ID"
+            placeholder="User ID (required)"
           />
           <button id="addUserBtn" onclick="addUser()" class="btn" disabled>
             Add User
@@ -267,7 +288,7 @@
     <script>
       let db = null;
       let currentUserId = null;
-      let userIds = new Set();
+      let users = new Map(); // Map to store userId -> email pairs
       let isConnected = false;
 
       function updateConnectionStatus(connected, message) {
@@ -309,8 +330,8 @@
           document.getElementById("connectBtn").disabled = true;
 
           // If we have any users in the list, load the first one
-          if (userIds.size > 0) {
-            selectUser(Array.from(userIds)[0]);
+          if (users.size > 0) {
+            selectUser(Array.from(users.keys())[0]);
           }
         } catch (error) {
           console.error("Firebase initialization error:", error);
@@ -321,13 +342,16 @@
 
       function addUser() {
         const newUserId = document.getElementById("newUserId").value.trim();
-        if (newUserId && !userIds.has(newUserId)) {
-          userIds.add(newUserId);
+        const newUserEmail = document.getElementById("newUserEmail").value.trim();
+        
+        if (newUserId && !users.has(newUserId)) {
+          users.set(newUserId, newUserEmail || newUserId);
           updateUserList();
           document.getElementById("newUserId").value = "";
+          document.getElementById("newUserEmail").value = "";
 
           // If this is the first user, select them automatically
-          if (userIds.size === 1) {
+          if (users.size === 1) {
             selectUser(newUserId);
           }
         }
@@ -337,12 +361,15 @@
         const userList = document.getElementById("userList");
         userList.innerHTML = "";
 
-        userIds.forEach((userId) => {
+        users.forEach((email, userId) => {
           const userItem = document.createElement("div");
           userItem.className = `user-item ${
             userId === currentUserId ? "active" : ""
           }`;
-          userItem.textContent = userId;
+          userItem.innerHTML = `
+            <div>${email}</div>
+            <div class="user-id">${userId}</div>
+          `;
           userItem.onclick = () => selectUser(userId);
           userList.appendChild(userItem);
         });
@@ -487,9 +514,31 @@
         }
       }
 
-      // Initialize with sample user IDs
-      userIds.add("123ekj123k1jhn3");
-      userIds.add("dasekjh23k1jhn3");
+      // Initialize with provided user IDs and emails
+      const initialUsers = [
+        ['8SfSCHBGaSdY1vCDbFarT2WioXH2', 'yeahicome@test.com'],
+        ['zeKUSyRoHvWKlIJLMmc6wJ70qwi2', 'jenay001@test.com'],
+        ['EOvZv5PYIebQYxcpKYJE3jfLHvf2', 'Ljlederman17@test.com'],
+        ['5ib20OhmVDgzjwp1pW9iYD81gi32', 'aveenase21@test.com'],
+        ['vTBEguJxUrObHZku3UZ63uNxtuE2', 'mount42@test.com'],
+        ['HEea94d7iTWWvLTx3aE1MTceFcP2', 'cravemagrobin@test.com'],
+        ['t7qpU5czOaebrn3UPoLT2Xf4xFl2', 'czizman@test.com'],
+        ['vGH2DhcX2zWGdl8AI9BGgNVmC9U2', 'hornbya@test.com'],
+        ['4NYGWulsJ0hIWackQJbvK9CGNq73', 'lindseytopping@test.com'],
+        ['MuaLPxSrdtb2jNDU87LeWppGlS82', 'jamieraye@test.com'],
+        ['FpHjMeUIUvPPNKh9ftZLDg1HALo1', 'tracy.hubing@test.com'],
+        ['U6ic7Y5FRgMlKeSA5oPiwjvBCOx2', 'zoogle24@test.com'],
+        ['F477juONSLgi7tyq97j7Ak3ydUe2', 'lookhazel@test.com'],
+        ['iPq3BiC5llRi2QCTQC3TmRjSGfE3', 'mapachitos2015@test.com'],
+        ['3gJeKr4gpLcglpuBZQYx3MdCHNV2', 'gina0915@test.com'],
+        ['nBErEIY75ecm7pWwGKArCJygfDL2', 'kalesmarie543@test.com']
+      ];
+
+      // Add all initial users to the users Map
+      initialUsers.forEach(([userId, email]) => {
+        users.set(userId, email);
+      });
+      
       updateUserList();
     </script>
   </body>
