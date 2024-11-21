@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Firebase Data Browser</title>
+    <title>User Conversation Browser</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.8.0/firebase-app-compat.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.8.0/firebase-firestore-compat.min.js"></script>
     <style>
@@ -23,7 +23,8 @@
       }
 
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
         line-height: 1.5;
         background: var(--background);
         height: 100vh;
@@ -216,102 +217,6 @@
         border-radius: 12px;
         font-size: 0.875rem;
       }
-      .tabs {
-        display: flex;
-        border-bottom: 1px solid var(--border);
-        background: white;
-        padding: 0 20px;
-      }
-
-      .tab {
-        padding: 12px 24px;
-        cursor: pointer;
-        border-bottom: 2px solid transparent;
-        color: #64748b;
-        transition: all 0.2s;
-      }
-
-      .tab:hover {
-        color: var(--primary);
-      }
-
-      .tab.active {
-        color: var(--primary);
-        border-bottom-color: var(--primary);
-      }
-
-      .tab-content {
-        display: none;
-        padding: 20px;
-        overflow-y: auto;
-        height: calc(100vh - 53px);
-      }
-
-      .tab-content.active {
-        display: block;
-      }
-
-      .evaluation-card {
-        background: white;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      }
-
-      .evaluation-header {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid var(--border);
-      }
-
-      .rating-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 15px;
-        margin-bottom: 20px;
-      }
-
-      .rating-item {
-        background: var(--background);
-        padding: 10px;
-        border-radius: 4px;
-      }
-
-      .rating-label {
-        font-size: 0.875rem;
-        color: #64748b;
-        margin-bottom: 4px;
-      }
-
-      .rating-value {
-        font-size: 1.25rem;
-        font-weight: 500;
-      }
-
-      .response-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 15px;
-      }
-
-      .response-item {
-        background: var(--background);
-        padding: 15px;
-        border-radius: 4px;
-      }
-
-      .response-label {
-        font-size: 0.875rem;
-        color: #64748b;
-        margin-bottom: 8px;
-      }
-
-      .response-text {
-        white-space: pre-wrap;
-      }
 
       .add-user-form {
         padding: 15px;
@@ -322,55 +227,71 @@
   <body>
     <div class="layout">
       <aside class="sidebar">
-        <!-- Existing sidebar content -->
         <div class="firebase-config">
           <h3 style="margin-bottom: 10px">Firebase Configuration</h3>
-          <input type="text" id="apiKey" class="config-input" placeholder="API Key" />
-          <input type="text" id="projectId" class="config-input" placeholder="Project ID" />
-          <button id="connectBtn" onclick="initializeFirebase()" class="btn btn-primary">Connect</button>
-          <div id="connectionStatus" class="connection-status">Not Connected</div>
+          <input
+            type="text"
+            id="apiKey"
+            class="config-input"
+            placeholder="API Key"
+          />
+          <input
+            type="text"
+            id="projectId"
+            class="config-input"
+            placeholder="Project ID"
+          />
+          <button
+            id="connectBtn"
+            onclick="initializeFirebase()"
+            class="btn btn-primary"
+          >
+            Connect
+          </button>
+          <div id="connectionStatus" class="connection-status">
+            Not Connected
+          </div>
         </div>
 
         <div class="add-user-form">
-          <input type="text" id="newUserEmail" class="config-input" placeholder="Email (optional)" />
-          <input type="text" id="newUserId" class="config-input" placeholder="User ID (required)" />
-          <button id="addUserBtn" onclick="addUser()" class="btn" disabled>Add User</button>
+          <input
+            type="text"
+            id="newUserEmail"
+            class="config-input"
+            placeholder="Email (optional)"
+          />
+          <input
+            type="text"
+            id="newUserId"
+            class="config-input"
+            placeholder="User ID (required)"
+          />
+          <button id="addUserBtn" onclick="addUser()" class="btn" disabled>
+            Add User
+          </button>
         </div>
-
 
         <div class="user-list" id="userList">
           <!-- User list will be populated here -->
         </div>
       </aside>
 
-      <main style="flex: 1; display: flex; flex-direction: column;">
-        <div class="tabs">
-          <div class="tab active" onclick="switchTab('conversations')">Mobile App Conversations</div>
-          <div class="tab" onclick="switchTab('evaluations')">LLM Evaluations</div>
-        </div>
-        
-        <div id="conversationsTab" class="tab-content active">
-          <div class="conversation-list" id="conversationList">
-            <div class="status-message">Connect to Firebase to view conversations</div>
-          </div>
-        </div>
-        
-        <div id="evaluationsTab" class="tab-content">
-          <div class="conversation-list" id="evaluationsList">
-            <div class="status-message">Connect to Firebase to view evaluations</div>
+      <main class="main-content">
+        <div class="conversation-list" id="conversationList">
+          <div class="status-message">
+            Connect to Firebase to view conversations
           </div>
         </div>
       </main>
     </div>
 
     <script>
-      // Existing variables and functions...
       let db = null;
       let currentUserId = null;
-      let users = new Map();
+      let users = new Map(); // Map to store userId -> email pairs
       let isConnected = false;
 
-            function updateConnectionStatus(connected, message) {
+      function updateConnectionStatus(connected, message) {
         const statusEl = document.getElementById("connectionStatus");
         const addUserBtn = document.getElementById("addUserBtn");
 
@@ -454,117 +375,6 @@
         });
       }
 
-
-      // Add tab switching functionality
-      function switchTab(tabName) {
-        // Update tab buttons
-        document.querySelectorAll('.tab').forEach(tab => {
-          tab.classList.remove('active');
-        });
-        document.querySelector(`.tab[onclick*="${tabName}"]`).classList.add('active');
-
-        // Update tab content
-        document.querySelectorAll('.tab-content').forEach(content => {
-          content.classList.remove('active');
-        });
-        document.getElementById(`${tabName}Tab`).classList.add('active');
-
-        // Reload data if needed
-        if (currentUserId) {
-          if (tabName === 'conversations') {
-            loadConversations(currentUserId);
-          } else if (tabName === 'evaluations') {
-            loadEvaluations(currentUserId);
-          }
-        }
-      }
-
-      // Add new function to load evaluations
-      async function loadEvaluations(userId) {
-        const evaluationsList = document.getElementById("evaluationsList");
-        evaluationsList.innerHTML = '<div class="status-message">Loading evaluations...</div>';
-
-        try {
-          const snapshot = await db
-            .collection("coco_internal_evaluations")
-            .where("prolific_id", "==", userId)
-            .get();
-
-          if (snapshot.empty) {
-            evaluationsList.innerHTML = '<div class="status-message">No evaluations found for this user.</div>';
-            return;
-          }
-
-          evaluationsList.innerHTML = '';
-
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            const evaluationCard = document.createElement('div');
-            evaluationCard.className = 'evaluation-card';
-            
-            evaluationCard.innerHTML = `
-              <div class="evaluation-header">
-                <div>Model: ${data.model_name || 'Unknown Model'}</div>
-                <div>ID: ${doc.id}</div>
-              </div>
-              
-              <div class="rating-grid">
-                <div class="rating-item">
-                  <div class="rating-label">Emotion Reaction</div>
-                  <div class="rating-value">${data.emotion_reaction || 0}</div>
-                </div>
-                <div class="rating-item">
-                  <div class="rating-label">Interpretation Accuracy</div>
-                  <div class="rating-value">${data.interpretation_accuracy || 0}</div>
-                </div>
-                <div class="rating-item">
-                  <div class="rating-label">Exploration Helpfulness</div>
-                  <div class="rating-value">${data.exploration_helpfulness || 0}</div>
-                </div>
-                <div class="rating-item">
-                  <div class="rating-label">Relationship Rating</div>
-                  <div class="rating-value">${data.relationship_rating || 5}</div>
-                </div>
-                <div class="rating-item">
-                  <div class="rating-label">Goals Focus</div>
-                  <div class="rating-value">${data.goals_focus || 5}</div>
-                </div>
-                <div class="rating-item">
-                  <div class="rating-label">Approach Fit</div>
-                  <div class="rating-value">${data.approach_fit || 5}</div>
-                </div>
-                <div class="rating-item">
-                  <div class="rating-label">Overall Satisfaction</div>
-                  <div class="rating-value">${data.overall_satisfaction || 5}</div>
-                </div>
-              </div>
-
-              <div class="response-grid">
-                ${Object.entries(data)
-                  .filter(([key, value]) => key.endsWith('_response') && value)
-                  .map(([key, value]) => `
-                    <div class="response-item">
-                      <div class="response-label">${key.replace(/_/g, ' ').replace('response', '').trim()}</div>
-                      <div class="response-text">${value}</div>
-                    </div>
-                  `).join('')}
-              </div>
-            `;
-            
-            evaluationsList.appendChild(evaluationCard);
-          });
-
-        } catch (error) {
-          console.error("Error loading evaluations:", error);
-          evaluationsList.innerHTML = `
-            <div class="error-message">
-              Error loading evaluations: ${error.message}
-            </div>
-          `;
-        }
-      }
-
-      // Modify selectUser to load both types of data
       function selectUser(userId) {
         if (!isConnected) {
           alert("Please connect to Firebase first");
@@ -573,14 +383,7 @@
 
         currentUserId = userId;
         updateUserList();
-        
-        // Load data based on active tab
-        const activeTab = document.querySelector('.tab.active');
-        if (activeTab.textContent.includes('Conversations')) {
-          loadConversations(userId);
-        } else {
-          loadEvaluations(userId);
-        }
+        loadConversations(userId);
       }
 
       function formatTimestamp(timestamp) {
