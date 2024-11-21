@@ -370,6 +370,91 @@
       let users = new Map();
       let isConnected = false;
 
+            function updateConnectionStatus(connected, message) {
+        const statusEl = document.getElementById("connectionStatus");
+        const addUserBtn = document.getElementById("addUserBtn");
+
+        isConnected = connected;
+        statusEl.textContent = message;
+        statusEl.className = `connection-status ${
+          connected ? "connected" : ""
+        }`;
+        addUserBtn.disabled = !connected;
+      }
+
+      async function initializeFirebase() {
+        const apiKey = document.getElementById("apiKey").value;
+        const projectId = document.getElementById("projectId").value;
+
+        if (!apiKey || !projectId) {
+          alert("Please fill in all Firebase configuration fields");
+          return;
+        }
+
+        try {
+          const firebaseConfig = {
+            apiKey: apiKey,
+            projectId: projectId,
+            authDomain: `${projectId}.firebaseapp.com`,
+          };
+
+          // Initialize Firebase
+          firebase.initializeApp(firebaseConfig);
+          db = firebase.firestore();
+
+          // Test connection by trying to get a document
+          await db.collection("chatSessions").limit(1).get();
+
+          updateConnectionStatus(true, "Connected");
+          document.getElementById("connectBtn").disabled = true;
+
+          // If we have any users in the list, load the first one
+          if (users.size > 0) {
+            selectUser(Array.from(users.keys())[0]);
+          }
+        } catch (error) {
+          console.error("Firebase initialization error:", error);
+          updateConnectionStatus(false, "Connection Failed");
+          alert(`Failed to connect: ${error.message}`);
+        }
+      }
+
+      function addUser() {
+        const newUserId = document.getElementById("newUserId").value.trim();
+        const newUserEmail = document.getElementById("newUserEmail").value.trim();
+        
+        if (newUserId && !users.has(newUserId)) {
+          users.set(newUserId, newUserEmail || newUserId);
+          updateUserList();
+          document.getElementById("newUserId").value = "";
+          document.getElementById("newUserEmail").value = "";
+
+          // If this is the first user, select them automatically
+          if (users.size === 1) {
+            selectUser(newUserId);
+          }
+        }
+      }
+
+      function updateUserList() {
+        const userList = document.getElementById("userList");
+        userList.innerHTML = "";
+
+        users.forEach((email, userId) => {
+          const userItem = document.createElement("div");
+          userItem.className = `user-item ${
+            userId === currentUserId ? "active" : ""
+          }`;
+          userItem.innerHTML = `
+            <div>${email}</div>
+            <div class="user-id">${userId}</div>
+          `;
+          userItem.onclick = () => selectUser(userId);
+          userList.appendChild(userItem);
+        });
+      }
+
+
       // Add tab switching functionality
       function switchTab(tabName) {
         // Update tab buttons
